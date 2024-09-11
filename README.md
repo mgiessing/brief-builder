@@ -7,7 +7,7 @@ This repository contains the components to deploy a brief builder using IBM Powe
 Clone the repository
 
 ```bash
-git clone https://github.com/mgiessing/brief-bulider && cd brief-builder
+git clone https://github.com/mgiessing/brief-builder && cd brief-builder
 ```
 
 ### Inference engine setup
