@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llama-cpp-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llama-cpp-server
+  template:
+    metadata:
+      labels:
+        app: llama-cpp-server
+    spec:
+      initContainers:
+        - name: fetch-model-data
+          image: ubi8
+          volumeMounts:
+            - name: gguf-models
+              mountPath: /models
+          command:
+            - sh
+            - '-c'
+            - |
+              if [ ! -f /models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf ] ; then
+                curl -L https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf?download=true --output /models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+              else
+                echo "model /models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf already present"
+              fi
+          resources: {}
+      containers:
+        - name: llama-cpp
+          image: quay.io/mgiessing/llama-cpp-server:master-b3265
+          args: ["-m", "/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf", "-c", "2048", "-b", "32", "--host", "0.0.0.0"]
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: gguf-models
+              mountPath: /models
+      volumes:
+        - name: gguf-models
+          persistentVolumeClaim:
+            claimName: gguf-models

@@ -1,0 +1,4 @@
+APP_FILE=app/main.py
+INFERENCE_BASE_URL=http://llama-cpp:8080/v1
+PIP_EXTRA_INDEX_URL=https://repo.fury.io/mgiessing
+PIP_PREFER_BINARY=True

@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-cpu-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-cpu-server
+  template:
+    metadata:
+      labels:
+        app: vllm-cpu-server
+    spec:
+      initContainers:
+        - name: fetch-model-data
+          image: image-registry.openshift-image-registry.svc:5000/openshift/python:3.9-ubi9
+          volumeMounts:
+            - name: hf-models
+              mountPath: /models
+          command:
+            - sh
+            - '-c'
+            - |
+              if [ ! -d /models/TinyLlama-1.1B-Chat-v1.0 ] ; then
+                pip3.9 install --prefer-binary --extra-index-url https://repo.fury.io/mgiessing huggingface-hub[cli];
+                huggingface-cli download TinyLlama/TinyLlama-1.1B-Chat-v1.0 --local-dir /models/TinyLlama-1.1B-Chat-v1.0;
+              else
+                echo "model /models/TinyLlama-1.1B-Chat-v1.0 already present";
+              fi
+          resources: {}
+      containers:
+        - name: vllm-cpu
+          image: quay.io/mgiessing/vllm:v0.5.3.post1-cpu-ubi9
+          args: ["--dtype", "float32", "--model", "/models/TinyLlama-1.1B-Chat-v1.0", "--port", "8080"]
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - name: hf-models
+              mountPath: /models
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+              scheme: HTTP
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+      volumes:
+        - name: hf-models
+          persistentVolumeClaim:
+            claimName: hf-models
